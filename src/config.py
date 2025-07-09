@@ -16,8 +16,8 @@ import os
 
 KAGGLE_WORKING_DIR = "/kaggle/working"
 VIDGEN_DATASET_PATH = "/kaggle/input/cyberbullying/raw/Dynamically Generated Hate Dataset v0.2.2.csv"
-DAVIDSON_DATASET_PATH = "/kaggle/input/cyberbullying/raw/davidson-dataset/davidson.csv"
-HATEMOJI_VALIDATION_PATH = "/kaggle/input/cyberbullying/raw/hatemojibuild/validation.csv"
+DAVIDSON_DATASET_PATH = "/kaggle/input/cyberbullying/raw/davidson.csv"
+HATEMOJI_VALIDATION_PATH = "/kaggle/input/cyberbullying/raw/HatemojiBuild/train.csv"
 GLOVE_PATH= "/kaggle/input/cyberbullying/glove.6B.100d.txt"  # Adjust this path
 
 LOGISTIC_REGRESSION_MODEL_PATH = os.path.join(KAGGLE_WORKING_DIR, 'models', 'logistic_regression_model.pkl')
