@@ -15,7 +15,7 @@ import os
 # GLOVE_PATH = r"E:\Cyberbullying\glove\glove.6B.100d.txt" # Adjust this path
 # LOGGING_DIR = r"E:\Cyberbullying\logs"  # Log directory for BERT Trainer
 
-KAGGLE_WORKING_DIR = "/kaggle/working/cyberbullying"
+KAGGLE_WORKING_DIR = "/kaggle/working"
 VIDGEN_DATASET_PATH = "/kaggle/input/cyberbullying/raw/Dynamically Generated Hate Dataset v0.2.2.csv"
 DAVIDSON_DATASET_PATH = "/kaggle/input/cyberbullying/raw/davidson.csv"
 HATEMOJI_VALIDATION_PATH = "/kaggle/input/cyberbullying/raw/HatemojiBuild/train.csv"
