@@ -84,6 +84,7 @@ def process_texts_for_emotion_features(df, text_column='text'):
     emoji_scores = []
     emotion_vectors = []
 
+    print("🔍 Extracting emotion and sentiment features...")
     for t in tqdm(df[text_column], desc="Extracting Emotion Features"):
         score, vector = extract_features(t)
         emoji_scores.append(score)
@@ -92,10 +93,25 @@ def process_texts_for_emotion_features(df, text_column='text'):
     df['emoji_score'] = emoji_scores
     df['emotion_vector'] = emotion_vectors
 
-    # Remove bad rows with invalid vectors or emoji score
-    df = df[df['emoji_score'].apply(lambda x: isinstance(x, (int, float)) and not np.isnan(x))]
-    df = df[df['emotion_vector'].apply(lambda x: isinstance(x, list) and len(x) == 6 and not any(np.isnan(xi) or np.isinf(xi) for xi in x))]
+    # --- Determine expected emotion vector length dynamically ---
+    valid_lengths = df['emotion_vector'].apply(lambda x: isinstance(x, list)).sum()
+    vector_lengths = df['emotion_vector'].apply(lambda x: len(x) if isinstance(x, list) else -1)
+    most_common_length = vector_lengths[vector_lengths != -1].mode().iloc[0] if not vector_lengths.empty else 0
 
+    print(f"✅ Detected most common emotion vector length: {most_common_length}")
+
+    # --- Clean data ---
+    # Keep only rows with valid emoji score
+    df = df[df['emoji_score'].apply(lambda x: isinstance(x, (int, float)) and not np.isnan(x))]
+
+    # Keep only rows with valid-length, finite emotion vectors
+    df = df[df['emotion_vector'].apply(
+        lambda x: isinstance(x, list)
+        and len(x) == most_common_length
+        and all(np.isfinite(xi) for xi in x)
+    )]
+
+    print(f"🧹 After filtering: {df.shape[0]} valid rows retained.")
     return df
 
 import re

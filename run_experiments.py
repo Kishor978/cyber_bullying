@@ -183,76 +183,93 @@ def run_emotion_fusion_model_experiment():
     print("                Running Emotion Fusion Model Experiment               ")
     print("="*80 + "\n")
 
-    df_fusion = load_hatemoji_validation_dataset() # Emotion notebook used validation.csv
-    df_fusion = process_texts_for_emotion_features(df_fusion) #
-    print("Label distribution:", df_fusion['label'].unique())
-    import numpy as np
-    has_invalid = df_fusion['emotion_vector'].apply(lambda x: np.any(np.isnan(x)) or np.any(np.isinf(x))).any()
-    print("Invalid emotion vectors:", has_invalid)
-    print("null",df_fusion['emoji_score'].isnull().sum())  # Should be 0
-    print(df_fusion['emoji_score'].apply(lambda x: isinstance(x, (int, float))).value_counts())
-    df_fusion['emoji_score'] = df_fusion['emoji_score'].fillna(0.0)
-    print(df_fusion['emoji_score'].apply(lambda x: isinstance(x, (int, float))).value_counts())
+    df_fusion = load_hatemoji_validation_dataset()
+    print(f"🔹 Loaded dataset: {df_fusion.shape[0]} rows")
 
-    df_fusion.dropna(subset=['text', 'emoji_score', 'emotion_vector'], inplace=True) #
+    df_fusion = process_texts_for_emotion_features(df_fusion)
+    print(f"🔹 After emotion feature extraction: {df_fusion.shape}")
 
-    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased") #
+    # Debug: check issues with emotion vectors
+    zero_vectors = df_fusion['emotion_vector'].apply(lambda x: isinstance(x, list) and np.all(np.array(x) == 0.0)).sum()
+    invalid_lengths = df_fusion['emotion_vector'].apply(lambda x: not isinstance(x, list) or len(x) != 7).sum()
+    print(f"⚠️  Rows with all-zero emotion vectors: {zero_vectors}")
+    print(f"❌ Rows with invalid-length vectors: {invalid_lengths}")
+    print(f"✅ Rows with valid non-zero vectors: {df_fusion.shape[0] - zero_vectors - invalid_lengths}")
 
-    # Re-tokenize after feature extraction if text has changed or for consistent encoding
-    encodings = tokenizer(list(df_fusion['text']), truncation=True, padding=True, max_length=128) #
-    input_ids = encodings['input_ids'] #
-    attention_mask = encodings['attention_mask'] #
+    # Filter only valid rows
+    df_fusion = df_fusion[df_fusion['text'].notnull() & df_fusion['text'].str.strip().astype(bool)]
+    df_fusion = df_fusion[df_fusion['emoji_score'].notnull()]
+    df_fusion = df_fusion[df_fusion['emotion_vector'].apply(lambda x: isinstance(x, list) and len(x) == 7)]
+    print(f"🧹 After cleaning: {df_fusion.shape[0]} rows remaining")
 
-    train_data, test_data = train_test_split( #
-        df_fusion, test_size=TEST_SIZE, stratify=df_fusion['label'], random_state=RANDOM_STATE) #
+    if df_fusion.empty:
+        print("❌ ERROR: All rows dropped during cleaning. Check emotion model or data quality.")
+        return
 
-    train_dataset = CyberbullyingFusionDataset( #
-        input_ids=tokenizer(list(train_data['text']), truncation=True, padding=True, max_length=128)['input_ids'], #
-        attention_masks=tokenizer(list(train_data['text']), truncation=True, padding=True, max_length=128)['attention_mask'], #
-        emoji_scores=list(train_data['emoji_score']), #
-        emotion_vectors=list(train_data['emotion_vector']), #
-        labels=list(train_data['label']) #
+    # Optional: Remove zero vectors if needed
+    # df_fusion = df_fusion[df_fusion['emotion_vector'].apply(lambda x: sum(x) > 0.0)]
+
+    # Tokenizer sanity check
+    print("\n✅ Tokenizer input check:")
+    print(f"Number of texts: {len(df_fusion['text'])}")
+    print(f"Example text: {df_fusion['text'].iloc[0]}")
+
+    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+    encodings = tokenizer(list(df_fusion['text']), truncation=True, padding=True, max_length=128)
+
+    input_ids = encodings['input_ids']
+    attention_mask = encodings['attention_mask']
+
+    train_data, test_data = train_test_split(
+        df_fusion, test_size=TEST_SIZE, stratify=df_fusion['label'], random_state=RANDOM_STATE)
+
+    # Create Dataset and DataLoader instances
+    train_dataset = CyberbullyingFusionDataset(
+        input_ids=tokenizer(list(train_data['text']), truncation=True, padding=True, max_length=128)['input_ids'],
+        attention_masks=tokenizer(list(train_data['text']), truncation=True, padding=True, max_length=128)['attention_mask'],
+        emoji_scores=list(train_data['emoji_score']),
+        emotion_vectors=list(train_data['emotion_vector']),
+        labels=list(train_data['label'])
     )
 
-    test_dataset = CyberbullyingFusionDataset( #
-        input_ids=tokenizer(list(test_data['text']), truncation=True, padding=True, max_length=128)['input_ids'], #
-        attention_masks=tokenizer(list(test_data['text']), truncation=True, padding=True, max_length=128)['attention_mask'], #
-        emoji_scores=list(test_data['emoji_score']), #
-        emotion_vectors=list(test_data['emotion_vector']), #
-        labels=list(test_data['label']) #
+    test_dataset = CyberbullyingFusionDataset(
+        input_ids=tokenizer(list(test_data['text']), truncation=True, padding=True, max_length=128)['input_ids'],
+        attention_masks=tokenizer(list(test_data['text']), truncation=True, padding=True, max_length=128)['attention_mask'],
+        emoji_scores=list(test_data['emoji_score']),
+        emotion_vectors=list(test_data['emotion_vector']),
+        labels=list(test_data['label'])
     )
 
-    train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True) #
-    test_loader = DataLoader(test_dataset, batch_size=16) #
+    train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=16)
 
-    model = BERTEmojiEmotionClassifier(emotion_dim=len(train_data['emotion_vector'].iloc[0])).to(device) #
-    criterion = torch.nn.BCELoss() #
-    optimizer = torch.optim.AdamW(model.parameters(), lr=2e-5) #
+    model = BERTEmojiEmotionClassifier(emotion_dim=7).to(device)
+    criterion = torch.nn.BCELoss()
+    optimizer = torch.optim.AdamW(model.parameters(), lr=2e-5)
 
-    train_losses, val_losses = [], [] #
-    train_accuracies, val_accuracies = [], [] #
+    train_losses, val_losses = [], []
+    train_accuracies, val_accuracies = [], []
 
     print("\n--- Training Emotion Fusion Model ---")
-    for epoch in range(1, 6): #
-        train_loss, train_acc = train_fusion_model_epoch(model, train_loader, optimizer, criterion, device) #
-        val_loss, y_pred, y_true = evaluate_fusion_model(model, test_loader, criterion, device) #
-        acc_val = accuracy_score(y_true, y_pred) #
-        prec_val = precision_score(y_true, y_pred) #
-        rec_val = recall_score(y_true, y_pred) #
-        f1_val = f1_score(y_true, y_pred) #
+    for epoch in range(1, 6):
+        train_loss, train_acc = train_fusion_model_epoch(model, train_loader, optimizer, criterion, device)
+        val_loss, y_pred, y_true = evaluate_fusion_model(model, test_loader, criterion, device)
+        acc_val = accuracy_score(y_true, y_pred)
+        prec_val = precision_score(y_true, y_pred)
+        rec_val = recall_score(y_true, y_pred)
+        f1_val = f1_score(y_true, y_pred)
 
+        train_losses.append(train_loss)
+        val_losses.append(val_loss)
+        train_accuracies.append(train_acc)
+        val_accuracies.append(acc_val)
 
-        train_losses.append(train_loss) #
-        val_losses.append(val_loss) #
-        train_accuracies.append(train_acc) #
-        val_accuracies.append(acc_val) #
+        print(f"Epoch {epoch}:")
+        print(f"  Train Loss: {train_loss:.4f}, Accuracy: {train_acc:.4f}")
+        print(f"  Val   Loss: {val_loss:.4f}, Accuracy: {acc_val:.4f}, Precision: {prec_val:.4f}, Recall: {rec_val:.4f}, F1: {f1_val:.4f}")
 
-        print(f"Epoch {epoch}:") #
-        print(f"  Train Loss: {train_loss:.4f}, Accuracy: {train_acc:.4f}") #
-        print(f"  Val   Loss: {val_loss:.4f}, Accuracy: {acc_val:.4f}, Precision: {prec_val:.4f}, Recall: {rec_val:.4f}, F1: {f1_val:.4f}") #
-
-    plot_training_history(train_losses, val_losses, train_accuracies, val_accuracies, "Emotion Fusion Model",
-                          save_path="./results/emotion_fusion_training_history.png")
+    plot_training_history(train_losses, val_losses, train_accuracies, val_accuracies,
+                          "Emotion Fusion Model", save_path="./results/emotion_fusion_training_history.png")
 
     print("\n--- Evaluating Emotion Fusion Model ---")
     _, y_pred_fusion, y_true_fusion = evaluate_fusion_model(model, test_loader, criterion, device)
@@ -260,9 +277,9 @@ def run_emotion_fusion_model_experiment():
     plot_confusion_matrix(y_true_fusion, y_pred_fusion, "Confusion Matrix - Proposed Model",
                           save_path="./results/emotion_fusion_confusion_matrix.png")
 
-    # Save the Emotion Fusion model
+    # Save the trained model
     torch.save(model.state_dict(), EMOTION_FUSION_MODEL_OUTPUT_DIR + "/emotion_fusion_model.pth")
-    print(f"Emotion Fusion model saved to {EMOTION_FUSION_MODEL_OUTPUT_DIR}/emotion_fusion_model.pth")
+    print(f"✅ Emotion Fusion model saved to {EMOTION_FUSION_MODEL_OUTPUT_DIR}/emotion_fusion_model.pth")
 
 
 if __name__ == "__main__":
