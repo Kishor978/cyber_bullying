@@ -28,6 +28,9 @@ from src.fusion_model import CyberbullyingFusionDataset, BERTEmojiEmotionClassif
 
 # Ensure output directories exist
 os.makedirs('./results', exist_ok=True)
+os.makedirs('./results/bert_model', exist_ok=True)
+os.makedirs('./results/bilstm_model', exist_ok=True)    
+os.makedirs('./results/emotion_fusion_model', exist_ok=True)
 os.makedirs('./models', exist_ok=True)
 os.makedirs('./logs', exist_ok=True) # For BERT trainer logs
 
@@ -73,36 +76,50 @@ def run_bert_model_experiment():
     print("                     Running BERT Model Experiment                    ")
     print("="*80 + "\n")
 
-    df_bert = load_davidson_dataset() # BERT notebook used davidson.csv
-    train_texts, test_texts, train_labels, test_labels = train_test_split( #
-        df_bert['text'], df_bert['label'], test_size=TEST_SIZE, stratify=df_bert['label'], random_state=RANDOM_STATE) #
+    # Load and split data
+    df_bert = load_vidgen_dataset()
+    train_texts, test_texts, train_labels, test_labels = train_test_split(
+        df_bert['text'], df_bert['label'],
+        test_size=TEST_SIZE, stratify=df_bert['label'], random_state=RANDOM_STATE
+    )
 
-    tokenizer = get_bert_tokenizer() #
-    train_encodings = tokenizer(list(train_texts), truncation=True, padding=True, max_length=128) #
-    test_encodings = tokenizer(list(test_texts), truncation=True, padding=True, max_length=128) #
+    # Tokenize
+    tokenizer = get_bert_tokenizer()
+    train_encodings = tokenizer(list(train_texts), truncation=True, padding=True, max_length=128, return_tensors='pt')
+    test_encodings = tokenizer(list(test_texts), truncation=True, padding=True, max_length=128, return_tensors='pt')
 
-    train_dataset = CyberbullyingDataset(train_encodings, train_labels.tolist()) #
-    test_dataset = CyberbullyingDataset(test_encodings, test_labels.tolist()) #
+    # Datasets
+    train_dataset = CyberbullyingDataset(train_encodings, train_labels.tolist())
+    test_dataset = CyberbullyingDataset(test_encodings, test_labels.tolist())
 
-    model = get_bert_model(num_labels=2) #
-    trainer = create_bert_trainer(model, BERT_MODEL_OUTPUT_DIR, train_dataset, test_dataset) #
+    # Model and Trainer
+    model = get_bert_model(num_labels=2)
+    trainer = create_bert_trainer(model, BERT_MODEL_OUTPUT_DIR, train_dataset, test_dataset)
 
+    # Train
     print("\n--- Training BERT Model ---")
-    trainer.train() #
-    # BERT model is saved by the trainer itself to BERT_MODEL_OUTPUT_DIR
+    trainer.train()
 
+    # Save best model and tokenizer
+    model.save_pretrained(BERT_MODEL_OUTPUT_DIR)
+    tokenizer.save_pretrained(BERT_MODEL_OUTPUT_DIR)
+
+    # Evaluate
     print("\n--- Evaluating BERT Model ---")
-    eval_results = trainer.evaluate() #
+    eval_results = trainer.evaluate()
     print("BERT Evaluation Results:", eval_results)
 
-    # Get predictions for confusion matrix
-    predictions = trainer.predict(test_dataset) #
-    y_true_bert = predictions.label_ids #
-    y_pred_bert = predictions.predictions.argmax(axis=1) #
+    # Predict and visualize
+    predictions = trainer.predict(test_dataset)
+    y_true_bert = predictions.label_ids
+    y_pred_bert = predictions.predictions.argmax(axis=1)
 
     print_classification_metrics(y_true_bert, y_pred_bert, "BERT Model")
-    plot_confusion_matrix(y_true_bert, y_pred_bert, "BERT Confusion Matrix",
-                          save_path="./results/bert_confusion_matrix.png")
+    plot_confusion_matrix(
+        y_true_bert, y_pred_bert, 
+        "BERT Confusion Matrix", 
+        save_path="./results/bert_confusion_matrix.png"
+    )
 
 def run_bilstm_model_experiment():
     print("\n" + "="*80)
@@ -168,6 +185,15 @@ def run_emotion_fusion_model_experiment():
 
     df_fusion = load_hatemoji_validation_dataset() # Emotion notebook used validation.csv
     df_fusion = process_texts_for_emotion_features(df_fusion) #
+    print("Label distribution:", df_fusion['label'].unique())
+    import numpy as np
+    has_invalid = df_fusion['emotion_vector'].apply(lambda x: np.any(np.isnan(x)) or np.any(np.isinf(x))).any()
+    print("Invalid emotion vectors:", has_invalid)
+    print("null",df_fusion['emoji_score'].isnull().sum())  # Should be 0
+    print(df_fusion['emoji_score'].apply(lambda x: isinstance(x, (int, float))).value_counts())
+    df_fusion['emoji_score'] = df_fusion['emoji_score'].fillna(0.0)
+    print(df_fusion['emoji_score'].apply(lambda x: isinstance(x, (int, float))).value_counts())
+
     df_fusion.dropna(subset=['text', 'emoji_score', 'emotion_vector'], inplace=True) #
 
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased") #

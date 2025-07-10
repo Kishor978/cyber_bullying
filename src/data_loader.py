@@ -29,6 +29,7 @@ def load_hatemoji_validation_dataset(path=HATEMOJI_VALIDATION_PATH):
     df = pd.read_csv(path)
     df = df[['text', 'label_gold']].dropna()
     df.rename(columns={'label_gold': 'label'}, inplace=True) # Align column name
+    
     print(f"Loaded Hatemoji validation dataset from {path}")
     print("Hatemoji Label distribution:\n", df['label'].value_counts())
     return df

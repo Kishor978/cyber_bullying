@@ -3,18 +3,19 @@ import os
 # Dataset Paths
 # VIDGEN_DATASET_PATH = r"E:\Cyberbullying\dataset\raw\Dynamically Generated Hate Dataset v0.2.2.csv"
 # DAVIDSON_DATASET_PATH = r"E:\Cyberbullying\dataset\raw\davidson.csv"
-# HATEMOJI_VALIDATION_PATH = r"E:\Cyberbullying\dataset\raw\HatemojiBuild\validation.csv"
+# HATEMOJI_VALIDATION_PATH = r"E:\Cyberbullying\dataset\raw\HatemojiBuild\train.csv"
 
-# Model and Output Paths
+# # Model and Output Paths
 # LOGISTIC_REGRESSION_MODEL_PATH = './models/logistic_regression_model.pkl'
 # BERT_MODEL_OUTPUT_DIR = './results/bert_model'
 # BILSTM_MODEL_OUTPUT_DIR = './results/bilstm_model'
 # EMOTION_FUSION_MODEL_OUTPUT_DIR = './results/emotion_fusion_model'
 
-# GloVe Embedding Path (for BiLSTM)
+# # GloVe Embedding Path (for BiLSTM)
 # GLOVE_PATH = r"E:\Cyberbullying\glove\glove.6B.100d.txt" # Adjust this path
+# LOGGING_DIR = r"E:\Cyberbullying\logs"  # Log directory for BERT Trainer
 
-KAGGLE_WORKING_DIR = "/kaggle/working"
+KAGGLE_WORKING_DIR = "/kaggle/working/cyberbullying"
 VIDGEN_DATASET_PATH = "/kaggle/input/cyberbullying/raw/Dynamically Generated Hate Dataset v0.2.2.csv"
 DAVIDSON_DATASET_PATH = "/kaggle/input/cyberbullying/raw/davidson.csv"
 HATEMOJI_VALIDATION_PATH = "/kaggle/input/cyberbullying/raw/HatemojiBuild/train.csv"
