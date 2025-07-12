@@ -55,7 +55,7 @@ def create_bert_trainer(model, training_args_output_dir, train_dataset, eval_dat
         output_dir=training_args_output_dir,
         eval_strategy="epoch",
         save_strategy="epoch",
-        num_train_epochs=3,
+        num_train_epochs=20,
         per_device_train_batch_size=16,
         per_device_eval_batch_size=64,
         logging_dir="./logs",
