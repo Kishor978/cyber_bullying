@@ -77,7 +77,7 @@ def run_bert_model_experiment():
     print("="*80 + "\n")
 
     # Load and split data
-    df_bert = load_vidgen_dataset()
+    df_bert = load_hatemoji_validation_dataset()
     train_texts, test_texts, train_labels, test_labels = train_test_split(
         df_bert['text'], df_bert['label'],
         test_size=TEST_SIZE, stratify=df_bert['label'], random_state=RANDOM_STATE

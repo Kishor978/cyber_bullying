@@ -3,9 +3,16 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from transformers import pipeline, AutoTokenizer, AutoModelForSequenceClassification
 import emoji
 from tqdm.auto import tqdm # Use tqdm.auto for notebook/script compatibility
+import re
 
 vader_analyzer = SentimentIntensityAnalyzer()
 emotion_pipeline = None
+
+
+def limit_emoji_repeats(text, max_repeat=5):
+    emoji_pattern = r'(([\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF])+)\2{' + str(max_repeat) + ',}'
+    return re.sub(emoji_pattern, r'\1'*max_repeat, text)
+
 
 
 def initialize_emotion_analyzer():
@@ -114,20 +121,14 @@ def process_texts_for_emotion_features(df, text_column='text'):
     print(f"🧹 After filtering: {df.shape[0]} valid rows retained.")
     return df
 
-import re
-
-def limit_emoji_repeats(text, max_repeat=5):
-    emoji_pattern = r'(([\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF])+)\2{' + str(max_repeat) + ',}'
-    return re.sub(emoji_pattern, r'\1'*max_repeat, text)
 
 
+# test_texts = [
+#     "Hell is hot 🔥🔥🔥🔥 and all you fucking woman are not!",
+#     "just let the refugees in 😤😤😤",
+#     "just DON'T let the refugees in then 😤😤😤"
+# ]
 
-test_texts = [
-    "Hell is hot 🔥🔥🔥🔥 and all you fucking woman are not!",
-    "just let the refugees in 😤😤😤",
-    "just DON'T let the refugees in then 😤😤😤"
-]
-
-for text in test_texts:
-    s, v = extract_features(text)
-    print(f"Text: {text}\nVADER: {s}\nEmotion Vector: {v}\n{'-'*60}")
+# for text in test_texts:
+#     s, v = extract_features(text)
+#     print(f"Text: {text}\nVADER: {s}\nEmotion Vector: {v}\n{'-'*60}")
