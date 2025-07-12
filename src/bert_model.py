@@ -53,7 +53,7 @@ def compute_bert_metrics(eval_pred):
 def create_bert_trainer(model, training_args_output_dir, train_dataset, eval_dataset):
     training_args = TrainingArguments(
         output_dir=training_args_output_dir,
-        evaluation_strategy="epoch",
+        eval_strategy="epoch",
         save_strategy="epoch",
         num_train_epochs=3,
         per_device_train_batch_size=16,
