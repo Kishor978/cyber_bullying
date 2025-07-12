@@ -77,7 +77,7 @@ def run_bert_model_experiment():
     print("="*80 + "\n")
 
     # Load and split data
-    df_bert = load_hatemoji_validation_dataset()
+    df_bert = load_vidgen_dataset()
     train_texts, test_texts, train_labels, test_labels = train_test_split(
         df_bert['text'], df_bert['label'],
         test_size=TEST_SIZE, stratify=df_bert['label'], random_state=RANDOM_STATE
@@ -153,7 +153,7 @@ def run_bilstm_model_experiment():
     val_losses, val_accuracies = [], [] #
 
     print("\n--- Training BiLSTM Model ---")
-    for epoch in range(1, 6): #
+    for epoch in range(1, 25): #
         train_loss, train_acc = train_bilstm_model(model, train_loader, optimizer, criterion, device) #
         val_loss, val_acc = eval_bilstm_model(model, test_loader, criterion, device) #
 
