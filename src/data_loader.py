@@ -1,6 +1,6 @@
 # src/data_loader.py
 import pandas as pd
-from src.config import VIDGEN_DATASET_PATH, DAVIDSON_DATASET_PATH, HATEMOJI_VALIDATION_PATH
+from src.config import VIDGEN_DATASET_PATH, DAVIDSON_DATASET_PATH, HATEMOJI_VALIDATION_PATH, OMG_PATH
 
 def load_vidgen_dataset(path=VIDGEN_DATASET_PATH):
     """Loads the Vidgen dataset and maps labels."""
@@ -24,13 +24,9 @@ def load_davidson_dataset(path=DAVIDSON_DATASET_PATH):
     print("Davidson Label distribution:\n", davidson_df['label'].value_counts()) #
     return davidson_df
 
-def load_hatemoji_validation_dataset(path=HATEMOJI_VALIDATION_PATH):
-    """Loads the Hatemoji validation dataset."""
+def load_omg_dataset(path=OMG_PATH):
+    # Load dataset
     df = pd.read_csv(path)
-    df = df[['text', 'label_gold']].dropna()
-    
-    df.rename(columns={'label_gold': 'label'}, inplace=True) # Align column name
-    
-    print(f"Loaded Hatemoji validation dataset from {path}")
-    print("Hatemoji Label distribution:\n", df['label'].value_counts())
-    return df
+    print(f"Loaded OMG dataset from {path}")
+    print("OMG Label distribution:\n", df['label'].value_counts()) #
+    return df[['text', 'label']]

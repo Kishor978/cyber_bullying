@@ -16,7 +16,7 @@ from src.config import (
     BERT_MODEL_OUTPUT_DIR, BILSTM_MODEL_OUTPUT_DIR, EMOTION_FUSION_MODEL_OUTPUT_DIR,
     LOGISTIC_REGRESSION_MODEL_PATH # Added for LR model saving
 )
-from src.data_loader import load_vidgen_dataset, load_davidson_dataset, load_hatemoji_validation_dataset
+from src.data_loader import load_vidgen_dataset, load_davidson_dataset,load_omg_dataset
 from src.text_preprocessing import clean_text, vectorize_tfidf, clean_and_tokenize
 from src.model_training import train_logistic_regression, save_model # save_model is for joblib models
 from src.evaluation_metrics import print_classification_metrics, plot_confusion_matrix, plot_training_history
@@ -57,7 +57,7 @@ def run_baseline_model():
 
 
     # Davidson Dataset
-    davidson_df = load_davidson_dataset()
+    davidson_df = load_omg_dataset()
     davidson_df['clean_text'] = davidson_df['text'].apply(clean_text)
     X_davidson, _ = vectorize_tfidf(davidson_df['clean_text'], max_features=TFIDF_MAX_FEATURES)
     y_davidson = davidson_df['label'].values
@@ -77,7 +77,7 @@ def run_bert_model_experiment():
     print("="*80 + "\n")
 
     # Load and split data
-    df_bert = load_vidgen_dataset()
+    df_bert = load_omg_dataset()
     train_texts, test_texts, train_labels, test_labels = train_test_split(
         df_bert['text'], df_bert['label'],
         test_size=TEST_SIZE, stratify=df_bert['label'], random_state=RANDOM_STATE
@@ -126,7 +126,7 @@ def run_bilstm_model_experiment():
     print("                     Running BiLSTM Model Experiment                    ")
     print("="*80 + "\n")
 
-    df_bilstm = load_vidgen_dataset() # BiLSTM notebook used Dynamically Generated Hate Dataset
+    df_bilstm = load_omg_dataset() # BiLSTM notebook used Dynamically Generated Hate Dataset
     df_bilstm['tokens'] = df_bilstm['text'].apply(clean_and_tokenize) #
 
     vocab = SimpleVocab(df_bilstm['tokens'].tolist(), min_freq=2) #
@@ -196,7 +196,7 @@ def run_emotion_fusion_model_experiment():
     print("                Running Emotion Fusion Model Experiment               ")
     print("="*80 + "\n")
 
-    df_fusion = load_hatemoji_validation_dataset()
+    df_fusion = load_omg_dataset()
     print(f"🔹 Loaded dataset: {df_fusion.shape[0]} rows")
 
     df_fusion = process_texts_for_emotion_features(df_fusion)

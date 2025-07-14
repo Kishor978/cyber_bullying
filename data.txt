@@ -1,0 +1,5 @@
+OFF_HATE_TOXIC_DATASET:https://huggingface.co/datasets/christinacdl/OFF_HATE_TOXIC_ENGLISH/tree/main
+
+Multi_hate:https://huggingface.co/datasets/valurank/hate-multi/tree/main/data
+
+gender-hate-speech:https://huggingface.co/datasets/ctoraman/gender-hate-speech/tree/main
