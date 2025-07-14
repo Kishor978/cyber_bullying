@@ -73,5 +73,3 @@ def create_bert_trainer(model, training_args_output_dir, train_dataset, eval_dat
         compute_metrics=compute_bert_metrics
     )
     return trainer
-
-# Main

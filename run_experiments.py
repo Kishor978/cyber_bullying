@@ -146,23 +146,36 @@ def run_bilstm_model_experiment():
                              collate_fn=lambda b: bilstm_collate_fn(b, PAD_IDX)) #
 
     model = BiLSTMClassifier(embedding_matrix, hidden_dim=128, output_dim=1).to(device) #
-    criterion = torch.nn.BCELoss() #
+    criterion = torch.nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3) #
 
     train_losses, train_accuracies = [], [] #
     val_losses, val_accuracies = [], [] #
 
-    print("\n--- Training BiLSTM Model ---")
-    for epoch in range(1, 25): #
-        train_loss, train_acc = train_bilstm_model(model, train_loader, optimizer, criterion, device) #
-        val_loss, val_acc = eval_bilstm_model(model, test_loader, criterion, device) #
+    best_val_loss = float('inf')
+    patience = 3
+    patience_counter = 0
 
-        train_losses.append(train_loss) #
-        train_accuracies.append(train_acc) #
-        val_losses.append(val_loss) #
-        val_accuracies.append(val_acc) #
+    for epoch in range(1, 25):
+        train_loss, train_acc = train_bilstm_model(model, train_loader, optimizer, criterion, device)
+        val_loss, val_acc = eval_bilstm_model(model, test_loader, criterion, device)
 
-        print(f"Epoch {epoch}: Train Loss {train_loss:.4f}, Acc {train_acc:.4f} | Val Loss {val_loss:.4f}, Acc {val_acc:.4f}") #
+        train_losses.append(train_loss)
+        train_accuracies.append(train_acc)
+        val_losses.append(val_loss)
+        val_accuracies.append(val_acc)
+
+        print(f"Epoch {epoch}: Train Loss {train_loss:.4f}, Acc {train_acc:.4f} | Val Loss {val_loss:.4f}, Acc {val_acc:.4f}")
+
+        # Early stopping
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            patience_counter = 0
+        else:
+            patience_counter += 1
+            if patience_counter >= patience:
+                print("Early stopping triggered!")
+                break
 
     plot_training_history(train_losses, val_losses, train_accuracies, val_accuracies, "BiLSTM",
                           save_path="./results/bilstm_training_history.png")

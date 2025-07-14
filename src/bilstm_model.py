@@ -64,67 +64,68 @@ def bilstm_collate_fn(batch, PAD_IDX): #
         torch.tensor(lengths, dtype=torch.long) #
     )
 
-class BiLSTMClassifier(nn.Module): #
-    def __init__(self, embedding_matrix, hidden_dim, output_dim, dropout=0.5): #
-        super().__init__() #
-        vocab_size, embedding_dim = embedding_matrix.shape #
-        self.embedding = nn.Embedding.from_pretrained(embedding_matrix, freeze=False) #
-        self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layers=1, bidirectional=True, batch_first=True) #
-        self.dropout = nn.Dropout(dropout) #
-        self.fc = nn.Linear(hidden_dim * 2, output_dim) #
-        self.sigmoid = nn.Sigmoid() #
+class BiLSTMClassifier(nn.Module):
+    def __init__(self, embedding_matrix, hidden_dim, output_dim, dropout=0.5):
+        super().__init__()
+        vocab_size, embedding_dim = embedding_matrix.shape
+        self.embedding = nn.Embedding.from_pretrained(embedding_matrix, freeze=False)
+        self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layers=1, bidirectional=True, batch_first=True)
+        self.dropout = nn.Dropout(dropout)
+        self.fc = nn.Linear(hidden_dim * 2, output_dim)
 
-    def forward(self, text, lengths): #
-        embedded = self.embedding(text) #
-        packed_output, (hidden, _) = self.lstm(embedded) #
-        hidden_cat = torch.cat((hidden[-2], hidden[-1]), dim=1) #
-        out = self.dropout(hidden_cat) #
-        return self.sigmoid(self.fc(out)).squeeze() #
+    def forward(self, text, lengths):
+        embedded = self.embedding(text)
+        packed_output, (hidden, _) = self.lstm(embedded)
+        hidden_cat = torch.cat((hidden[-2], hidden[-1]), dim=1)
+        out = self.dropout(hidden_cat)
+        return self.fc(out).squeeze()  # logits returned (no sigmoid here)
 
-def train_bilstm_model(model, loader, optimizer, criterion, device): #
-    model.train() #
-    total_loss, correct, total = 0, 0, 0 #
-    for texts, labels, lengths in loader: #
-        texts, labels, lengths = texts.to(device), labels.to(device), lengths.to(device) #
-        optimizer.zero_grad() #
-        outputs = model(texts, lengths) #
-        loss = criterion(outputs, labels) #
-        loss.backward() #
-        optimizer.step() #
+def train_bilstm_model(model, loader, optimizer, criterion, device):
+    model.train()
+    total_loss, correct, total = 0, 0, 0
+    for texts, labels, lengths in loader:
+        texts, labels, lengths = texts.to(device), labels.to(device), lengths.to(device)
+        optimizer.zero_grad()
+        outputs = model(texts, lengths)
+        loss = criterion(outputs, labels)
+        loss.backward()
+        # Optional: Gradient Clipping
+        # torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1)
+        optimizer.step()
 
-        total_loss += loss.item() #
-        preds = (outputs >= 0.5).long() #
-        correct += (preds == labels).sum().item() #
-        total += labels.size(0) #
+        total_loss += loss.item()
+        preds = (torch.sigmoid(outputs) >= 0.5).long()
+        correct += (preds == labels).sum().item()
+        total += labels.size(0)
 
-    acc = correct / total #
-    return total_loss / len(loader), acc #
+    acc = correct / total
+    return total_loss / len(loader), acc
 
-def eval_bilstm_model(model, loader, criterion, device): #
-    model.eval() #
-    total_loss, correct, total = 0, 0, 0 #
-    with torch.no_grad(): #
-        for texts, labels, lengths in loader: #
-            texts, labels, lengths = texts.to(device), labels.to(device), lengths.to(device) #
-            outputs = model(texts, lengths) #
-            loss = criterion(outputs, labels) #
+def eval_bilstm_model(model, loader, criterion, device):
+    model.eval()
+    total_loss, correct, total = 0, 0, 0
+    with torch.no_grad():
+        for texts, labels, lengths in loader:
+            texts, labels, lengths = texts.to(device), labels.to(device), lengths.to(device)
+            outputs = model(texts, lengths)
+            loss = criterion(outputs, labels)
 
-            total_loss += loss.item() #
-            preds = (outputs >= 0.5).long() #
-            correct += (preds == labels).sum().item() #
-            total += labels.size(0) #
+            total_loss += loss.item()
+            preds = (torch.sigmoid(outputs) >= 0.5).long()
+            correct += (preds == labels).sum().item()
+            total += labels.size(0)
 
-    acc = correct / total #
-    return total_loss / len(loader), acc #
+    acc = correct / total
+    return total_loss / len(loader), acc
 
-def get_bilstm_predictions(model, loader, device): # Modified from bilstm.ipynb evaluate_model function
+def get_bilstm_predictions(model, loader, device):
     model.eval()
     all_preds = []
     all_labels = []
     with torch.no_grad():
         for texts, labels, lengths in loader:
             texts, labels, lengths = texts.to(device), labels.to(device), lengths.to(device)
-            outputs = model(texts, lengths)
+            outputs = torch.sigmoid(model(texts, lengths))
             predicted = (outputs >= 0.5).long()
             all_preds.extend(predicted.cpu().numpy())
             all_labels.extend(labels.cpu().numpy())
