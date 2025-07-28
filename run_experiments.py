@@ -6,9 +6,10 @@ from torch.utils.data import DataLoader
 import os
 import argparse # Import argparse
 import numpy as np  
-import joblib # For saving models with joblib
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-from transformers import BertTokenizer
+from transformers import RobertaTokenizer
+from transformers import get_scheduler
+from sklearn.utils.class_weight import compute_class_weight
+
 # Import all your modularized components
 from src.config import (
     TFIDF_MAX_FEATURES, RANDOM_STATE, TEST_SIZE, GLOVE_PATH,
@@ -21,10 +22,8 @@ from src.model_training import train_logistic_regression, save_model # save_mode
 from src.evaluation_metrics import print_classification_metrics, plot_confusion_matrix, plot_training_history
 from src.bert_model import CyberbullyingDataset, get_bert_tokenizer, get_bert_model, create_bert_trainer, compute_bert_metrics
 from src.bilstm_model import SimpleVocab, load_glove, TextDataset, bilstm_collate_fn, BiLSTMClassifier, train_bilstm_model, eval_bilstm_model, get_bilstm_predictions
-from src.emotion_features import process_texts_for_emotion_features
-from src.fusion_model import CyberbullyingFusionDataset, BERTEmojiEmotionClassifier, train_fusion_model_epoch, evaluate_fusion_model
-
-
+from src.roberta_emotion_model import RobertaCNNWithEmotion
+from src.emotion_utils import EmotionDataset,EarlyStopping, train_epoch, evaluate, final_evaluation
 # Ensure output directories exist
 os.makedirs('./results', exist_ok=True)
 os.makedirs('./results/bert_model', exist_ok=True)
@@ -139,7 +138,7 @@ def run_bilstm_model_experiment():
     print("                     Running BiLSTM Model Experiment                    ")
     print("="*80 + "\n")
 
-    df_bilstm = load_combined_dataset() # BiLSTM notebook used Dynamically Generated Hate Dataset
+    df_bilstm = load_combined_dataset() 
     df_bilstm['tokens'] = df_bilstm['text'].apply(clean_and_tokenize) #
 
     vocab = SimpleVocab(df_bilstm['tokens'].tolist(), min_freq=2) #
@@ -209,98 +208,63 @@ def run_emotion_fusion_model_experiment():
     print("                Running Emotion Fusion Model Experiment               ")
     print("="*80 + "\n")
 
-    df_fusion = load_combined_dataset()
-    print(f"🔹 Loaded dataset: {df_fusion.shape[0]} rows")
+    df = load_combined_dataset()
+    train_texts, val_texts, train_labels, val_labels = train_test_split(
+        df['text'].tolist(), df['label'].tolist(), test_size=0.2, stratify=df['label']
+)
+    class_weights = compute_class_weight(class_weight='balanced', classes=np.unique(train_labels), y=train_labels)
+    class_weights = torch.tensor(class_weights, dtype=torch.float).to(device)
+    print(class_weights)
 
-    df_fusion = process_texts_for_emotion_features(df_fusion)
-    print(f"🔹 After emotion feature extraction: {df_fusion.shape}")
+    tokenizer = RobertaTokenizer.from_pretrained('roberta-base')
+    train_dataset = EmotionDataset(train_texts, train_labels, tokenizer)
+    val_dataset = EmotionDataset(val_texts, val_labels, tokenizer)
+    print("data tokenization")
+    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=64)
+    print("data loades")
+    model = RobertaCNNWithEmotion().to(device)
 
-    # Debug: check issues with emotion vectors
-    zero_vectors = df_fusion['emotion_vector'].apply(lambda x: isinstance(x, list) and np.all(np.array(x) == 0.0)).sum()
-    invalid_lengths = df_fusion['emotion_vector'].apply(lambda x: not isinstance(x, list) or len(x) != 7).sum()
-    print(f"⚠️  Rows with all-zero emotion vectors: {zero_vectors}")
-    print(f"❌ Rows with invalid-length vectors: {invalid_lengths}")
-    print(f"✅ Rows with valid non-zero vectors: {df_fusion.shape[0] - zero_vectors - invalid_lengths}")
+    criterion = torch.nn.CrossEntropyLoss(weight=class_weights)
 
-    # Filter only valid rows
-    df_fusion = df_fusion[df_fusion['text'].notnull() & df_fusion['text'].str.strip().astype(bool)]
-    df_fusion = df_fusion[df_fusion['emoji_score'].notnull()]
-    df_fusion = df_fusion[df_fusion['emotion_vector'].apply(lambda x: isinstance(x, list) and len(x) == 7)]
-    print(f"🧹 After cleaning: {df_fusion.shape[0]} rows remaining")
-
-    if df_fusion.empty:
-        print("❌ ERROR: All rows dropped during cleaning. Check emotion model or data quality.")
-        return
-
-    # Optional: Remove zero vectors if needed
-    # df_fusion = df_fusion[df_fusion['emotion_vector'].apply(lambda x: sum(x) > 0.0)]
-
-    # Tokenizer sanity check
-    print("\n✅ Tokenizer input check:")
-    print(f"Number of texts: {len(df_fusion['text'])}")
-    print(f"Example text: {df_fusion['text'].iloc[0]}")
-
-    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-    encodings = tokenizer(list(df_fusion['text']), truncation=True, padding=True, max_length=128)
-
-    input_ids = encodings['input_ids']
-    attention_mask = encodings['attention_mask']
-
-    train_data, test_data = train_test_split(
-        df_fusion, test_size=TEST_SIZE, stratify=df_fusion['label'], random_state=RANDOM_STATE)
-
-    # Create Dataset and DataLoader instances
-    train_dataset = CyberbullyingFusionDataset(
-        input_ids=tokenizer(list(train_data['text']), truncation=True, padding=True, max_length=128)['input_ids'],
-        attention_masks=tokenizer(list(train_data['text']), truncation=True, padding=True, max_length=128)['attention_mask'],
-        emoji_scores=list(train_data['emoji_score']),
-        emotion_vectors=list(train_data['emotion_vector']),
-        labels=list(train_data['label'])
-    )
-
-    test_dataset = CyberbullyingFusionDataset(
-        input_ids=tokenizer(list(test_data['text']), truncation=True, padding=True, max_length=128)['input_ids'],
-        attention_masks=tokenizer(list(test_data['text']), truncation=True, padding=True, max_length=128)['attention_mask'],
-        emoji_scores=list(test_data['emoji_score']),
-        emotion_vectors=list(test_data['emotion_vector']),
-        labels=list(test_data['label'])
-    )
-
-    train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=16)
-
-    model = BERTEmojiEmotionClassifier(emotion_dim=7).to(device)
-    criterion = torch.nn.BCELoss()
     optimizer = torch.optim.AdamW(model.parameters(), lr=2e-5)
 
-    train_losses, val_losses = [], []
-    train_accuracies, val_accuracies = [], []
-
-    print("\n--- Training Emotion Fusion Model ---")
-    for epoch in range(1, 6):
-        train_loss, train_acc = train_fusion_model_epoch(model, train_loader, optimizer, criterion, device)
-        val_loss, y_pred, y_true = evaluate_fusion_model(model, test_loader, criterion, device)
-        acc_val = accuracy_score(y_true, y_pred)
-        prec_val = precision_score(y_true, y_pred)
-        rec_val = recall_score(y_true, y_pred)
-        f1_val = f1_score(y_true, y_pred)
-
+    EPOCHS = 10
+    early_stopper = EarlyStopping(patience=3, delta=0.001)
+    # Scheduler
+    scheduler = get_scheduler(
+        "linear",
+        optimizer=optimizer,
+        num_warmup_steps=0,
+        num_training_steps=EPOCHS * len(train_loader),
+    )
+    train_losses, train_accuracies = [], []
+    val_losses, val_accuracies, val_f1s = [], [], []
+    print("training")
+    for epoch in range(EPOCHS):
+        train_loss, train_acc = train_epoch(model, train_loader, optimizer, criterion, device)
+        val_loss, val_acc, val_f1 = evaluate(model, val_loader, criterion, device)
         train_losses.append(train_loss)
-        val_losses.append(val_loss)
         train_accuracies.append(train_acc)
-        val_accuracies.append(acc_val)
+        val_losses.append(val_loss)
+        val_accuracies.append(val_acc)
+        val_f1s.append(val_f1)
+        print(f"Epoch {epoch+1}/{EPOCHS}")
+        print(f"  Train     | Loss: {train_loss:.4f} | Accuracy: {train_acc:.4f}")
+        print(f"  Validation| Loss: {val_loss:.4f} | Accuracy: {val_acc:.4f} | F1 Score: {val_f1:.4f}")
 
-        print(f"Epoch {epoch}:")
-        print(f"  Train Loss: {train_loss:.4f}, Accuracy: {train_acc:.4f}")
-        print(f"  Val   Loss: {val_loss:.4f}, Accuracy: {acc_val:.4f}, Precision: {prec_val:.4f}, Recall: {rec_val:.4f}, F1: {f1_val:.4f}")
-
+        early_stopper(val_f1, model)
+        if early_stopper.early_stop:
+            print("Early stopping triggered.")
+            break
+        scheduler.step()
     plot_training_history(train_losses, val_losses, train_accuracies, val_accuracies,
                           "Emotion Fusion Model", save_path="./results/emotion_fusion_training_history.png")
 
     print("\n--- Evaluating Emotion Fusion Model ---")
-    _, y_pred_fusion, y_true_fusion = evaluate_fusion_model(model, test_loader, criterion, device)
-    print_classification_metrics(y_true_fusion, y_pred_fusion, "Emotion Fusion Model")
-    plot_confusion_matrix(y_true_fusion, y_pred_fusion, "Confusion Matrix - Proposed Model",
+    y_pred, y_true = final_evaluation(model, val_loader, device)
+    print_classification_metrics(y_true, y_pred, "Emotion Fusion Model")
+    plot_confusion_matrix(y_true, y_pred, "Confusion Matrix - Proposed Model",
                           save_path="./results/emotion_fusion_confusion_matrix.png")
 
     # Save the trained model
