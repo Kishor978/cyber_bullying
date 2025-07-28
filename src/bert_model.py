@@ -1,5 +1,3 @@
-# src/bert_model.py
-
 import torch
 from transformers import (
     BertTokenizer, 

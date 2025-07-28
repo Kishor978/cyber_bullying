@@ -1,6 +1,5 @@
-# src/data_loader.py
 import pandas as pd
-from src.config import VIDGEN_DATASET_PATH, DAVIDSON_DATASET_PATH, HATEMOJI_VALIDATION_PATH, OMG_PATH
+from src.config import VIDGEN_DATASET_PATH, DAVIDSON_DATASET_PATH, COMBINED
 
 def load_vidgen_dataset(path=VIDGEN_DATASET_PATH):
     """Loads the Vidgen dataset and maps labels."""
@@ -24,9 +23,9 @@ def load_davidson_dataset(path=DAVIDSON_DATASET_PATH):
     print("Davidson Label distribution:\n", davidson_df['label'].value_counts()) #
     return davidson_df
 
-def load_omg_dataset(path=OMG_PATH):
-    # Load dataset
-    df = pd.read_csv(path)
-    print(f"Loaded OMG dataset from {path}")
-    print("OMG Label distribution:\n", df['label'].value_counts()) #
+def load_combined_dataset(path=COMBINED):
+    """ """
+    df=pd.read_csv(path)
+    print(f"Loaded combined dataset from {path}")
+    print("Combined Label distribution:\n", df['label'].value_counts()) #
     return df[['text', 'label']]

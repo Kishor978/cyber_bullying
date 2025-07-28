@@ -11,12 +11,11 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from transformers import BertTokenizer
 # Import all your modularized components
 from src.config import (
-    VIDGEN_DATASET_PATH, DAVIDSON_DATASET_PATH, HATEMOJI_VALIDATION_PATH,
     TFIDF_MAX_FEATURES, RANDOM_STATE, TEST_SIZE, GLOVE_PATH,
     BERT_MODEL_OUTPUT_DIR, BILSTM_MODEL_OUTPUT_DIR, EMOTION_FUSION_MODEL_OUTPUT_DIR,
     LOGISTIC_REGRESSION_MODEL_PATH # Added for LR model saving
 )
-from src.data_loader import load_vidgen_dataset, load_davidson_dataset,load_omg_dataset
+from src.data_loader import load_vidgen_dataset, load_davidson_dataset, load_combined_dataset
 from src.text_preprocessing import clean_text, vectorize_tfidf, clean_and_tokenize
 from src.model_training import train_logistic_regression, save_model # save_model is for joblib models
 from src.evaluation_metrics import print_classification_metrics, plot_confusion_matrix, plot_training_history
@@ -57,7 +56,7 @@ def run_baseline_model():
 
 
     # Davidson Dataset
-    davidson_df = load_omg_dataset()
+    davidson_df = load_davidson_dataset()
     davidson_df['clean_text'] = davidson_df['text'].apply(clean_text)
     X_davidson, _ = vectorize_tfidf(davidson_df['clean_text'], max_features=TFIDF_MAX_FEATURES)
     y_davidson = davidson_df['label'].values
@@ -70,6 +69,20 @@ def run_baseline_model():
                           save_path="./results/baseline_davidson_cm.png")
     save_model(lr_model_davidson, LOGISTIC_REGRESSION_MODEL_PATH.replace(".pkl", "_davidson.pkl")) # Save Davidson LR model
 
+    # Combined Dataset
+    combined_df = load_combined_dataset()
+    combined_df['clean_text'] = combined_df['text'].apply(clean_text)
+    X_combined, _ = vectorize_tfidf(combined_df['clean_text'], max_features=TFIDF_MAX_FEATURES)
+    y_combined = combined_df['label'].values
+
+    print("\n--- Training Logistic Regression on Combined Dataset ---")
+    lr_model_combined, X_test_combined, y_test_combined = train_logistic_regression(X_combined, y_combined)
+    y_pred_combined = lr_model_combined.predict(X_test_combined)
+    print_classification_metrics(y_test_combined, y_pred_combined, "Combined Dataset (Logistic Regression)")
+    plot_confusion_matrix(y_test_combined, y_pred_combined, "Confusion Matrix - Combined LR",
+                          save_path="./results/baseline_combined_cm.png")
+    save_model(lr_model_combined, LOGISTIC_REGRESSION_MODEL_PATH.replace(".pkl", "_combined.pkl")) # Save Combined LR model
+
 
 def run_bert_model_experiment():
     print("\n" + "="*80)
@@ -77,7 +90,7 @@ def run_bert_model_experiment():
     print("="*80 + "\n")
 
     # Load and split data
-    df_bert = load_omg_dataset()
+    df_bert = load_combined_dataset()
     train_texts, test_texts, train_labels, test_labels = train_test_split(
         df_bert['text'], df_bert['label'],
         test_size=TEST_SIZE, stratify=df_bert['label'], random_state=RANDOM_STATE
@@ -126,7 +139,7 @@ def run_bilstm_model_experiment():
     print("                     Running BiLSTM Model Experiment                    ")
     print("="*80 + "\n")
 
-    df_bilstm = load_omg_dataset() # BiLSTM notebook used Dynamically Generated Hate Dataset
+    df_bilstm = load_combined_dataset() # BiLSTM notebook used Dynamically Generated Hate Dataset
     df_bilstm['tokens'] = df_bilstm['text'].apply(clean_and_tokenize) #
 
     vocab = SimpleVocab(df_bilstm['tokens'].tolist(), min_freq=2) #
@@ -196,7 +209,7 @@ def run_emotion_fusion_model_experiment():
     print("                Running Emotion Fusion Model Experiment               ")
     print("="*80 + "\n")
 
-    df_fusion = load_omg_dataset()
+    df_fusion = load_combined_dataset()
     print(f"🔹 Loaded dataset: {df_fusion.shape[0]} rows")
 
     df_fusion = process_texts_for_emotion_features(df_fusion)
