@@ -98,6 +98,7 @@ def train_epoch(model, dataloader, optimizer, criterion, device):
     acc = total_correct / len(dataloader.dataset)
     return total_loss / len(dataloader), acc
     
+
 def evaluate(model, dataloader, criterion, device):
     model.eval()
     total_loss, total_correct = 0, 0
@@ -109,9 +110,10 @@ def evaluate(model, dataloader, criterion, device):
         for batch in loop:
             input_ids = batch['input_ids'].to(device)
             attention_mask = batch['attention_mask'].to(device)
+            emotion_vec = batch['emotion_vec'].to(device)  # ✅ ADD THIS
             labels = batch['label'].to(device)
 
-            outputs = model(input_ids, attention_mask)
+            outputs = model(input_ids=input_ids, attention_mask=attention_mask, emotion_vec=emotion_vec)
             loss = criterion(outputs, labels)
             total_loss += loss.item()
 
@@ -126,6 +128,7 @@ def evaluate(model, dataloader, criterion, device):
     avg_loss = total_loss / len(dataloader)
     f1 = f1_score(all_labels, all_preds, average='macro')
     return avg_loss, acc, f1
+
 
 def final_evaluation(model, dataloader, device):
     model.eval()
