@@ -89,7 +89,7 @@ def run_bert_model_experiment():
     print("="*80 + "\n")
 
     # Load and split data
-    df_bert = load_combined_dataset()
+    df_bert = load_davidson_dataset()
     train_texts, test_texts, train_labels, test_labels = train_test_split(
         df_bert['text'], df_bert['label'],
         test_size=TEST_SIZE, stratify=df_bert['label'], random_state=RANDOM_STATE
@@ -138,7 +138,7 @@ def run_bilstm_model_experiment():
     print("                     Running BiLSTM Model Experiment                    ")
     print("="*80 + "\n")
 
-    df_bilstm = load_combined_dataset() 
+    df_bilstm = load_davidson_dataset() 
     df_bilstm['tokens'] = df_bilstm['text'].apply(clean_and_tokenize) #
 
     vocab = SimpleVocab(df_bilstm['tokens'].tolist(), min_freq=2) #
@@ -208,7 +208,7 @@ def run_emotion_fusion_model_experiment():
     print("                Running Emotion Fusion Model Experiment               ")
     print("="*80 + "\n")
 
-    df = load_combined_dataset()
+    df = load_davidson_dataset()
     train_texts, val_texts, train_labels, val_labels = train_test_split(
         df['text'].tolist(), df['label'].tolist(), test_size=0.2, stratify=df['label']
 )
