@@ -229,7 +229,7 @@ def run_emotion_fusion_model_experiment():
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=2e-5)
 
-    EPOCHS = 1
+    EPOCHS = 8
     early_stopper = EarlyStopping(patience=3, delta=0.001)
     # Scheduler
     scheduler = get_scheduler(
