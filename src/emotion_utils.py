@@ -169,9 +169,11 @@ def final_evaluation(model, dataloader, device):
         for batch in dataloader:
             input_ids = batch['input_ids'].to(device)
             attention_mask = batch['attention_mask'].to(device)
+            emotion_vec = batch['emotion_vec'].to(device)  # ✅ ADD THIS
+
             labels = batch['label'].to(device)
 
-            outputs = model(input_ids, attention_mask)
+            outputs = model(input_ids=input_ids, attention_mask=attention_mask, emotion_vec=emotion_vec)
             preds = outputs.argmax(dim=1)
 
             all_preds.extend(preds.cpu().numpy())
