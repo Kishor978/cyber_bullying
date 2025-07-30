@@ -98,6 +98,36 @@ def train_epoch(model, dataloader, optimizer, criterion, device):
     acc = total_correct / len(dataloader.dataset)
     return total_loss / len(dataloader), acc
     
+def evaluate(model, dataloader, criterion, device):
+    model.eval()
+    total_loss, total_correct = 0, 0
+    all_preds, all_labels = [], []
+
+    loop = tqdm(dataloader, desc="Validating", leave=False)
+
+    with torch.no_grad():
+        for batch in loop:
+            input_ids = batch['input_ids'].to(device)
+            attention_mask = batch['attention_mask'].to(device)
+            emotion_vec = batch['emotion_vec'].to(device)
+
+            labels = batch['label'].to(device)
+
+            outputs = model(input_ids, attention_mask)
+            loss = criterion(outputs, labels)
+            total_loss += loss.item()
+
+            preds = outputs.argmax(dim=1)
+            all_preds.extend(preds.cpu().tolist())
+            all_labels.extend(labels.cpu().tolist())
+            total_correct += (preds == labels).sum().item()
+
+            loop.set_postfix(loss=loss.item())
+
+    acc = total_correct / len(dataloader.dataset)
+    avg_loss = total_loss / len(dataloader)
+    f1 = f1_score(all_labels, all_preds, average='macro')
+    return avg_loss, acc, f1
 
 def evaluate(model, dataloader, criterion, device):
     model.eval()
