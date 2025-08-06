@@ -40,7 +40,7 @@ def run_baseline_model():
     print("="*80 + "\n")
 
     # Vidgen Dataset
-    vidgen_df = load_vidgen_dataset()
+    vidgen_df = load_davidson_dataset()
     vidgen_df['clean_text'] = vidgen_df['text'].apply(clean_text)
     X_vidgen, tfidf_vidgen = vectorize_tfidf(vidgen_df['clean_text'], max_features=TFIDF_MAX_FEATURES)
     y_vidgen = vidgen_df['label'].values
