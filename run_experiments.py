@@ -40,7 +40,7 @@ def run_baseline_model():
     print("="*80 + "\n")
 
     # Vidgen Dataset
-    vidgen_df = load_davidson_dataset()
+    vidgen_df = load_vidgen_dataset()
     vidgen_df['clean_text'] = vidgen_df['text'].apply(clean_text)
     X_vidgen, tfidf_vidgen = vectorize_tfidf(vidgen_df['clean_text'], max_features=TFIDF_MAX_FEATURES)
     y_vidgen = vidgen_df['label'].values
@@ -218,7 +218,7 @@ def run_emotion_fusion_model_experiment():
     print("                Running Emotion Fusion Model Experiment               ")
     print("="*80 + "\n")
 
-    df = load_vidgen_dataset()
+    df = load_davidson_dataset()
     train_texts, val_texts, train_labels, val_labels = train_test_split(
         df['text'].tolist(), df['label'].tolist(), test_size=0.2, stratify=df['label']
 )
