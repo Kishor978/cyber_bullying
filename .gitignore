@@ -208,3 +208,8 @@ __marimo__/
 dataset
 glove
 *.pt
+deployed_models
+models
+results
+logs
+monitoring

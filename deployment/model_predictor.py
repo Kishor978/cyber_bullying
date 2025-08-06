@@ -1,4 +1,8 @@
 import os
+import sys
+# Add project root to path so we can import modules - MUST BE BEFORE OTHER IMPORTS
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import torch
 import pickle
 import joblib
@@ -173,7 +177,7 @@ class ModelPredictor:
 # Example usage
 if __name__ == "__main__":
     # Test prediction
-    predictor = ModelPredictor(model_type='logistic')
+    predictor = ModelPredictor(model_type='emotion_fusion')
     text = "Hey black, you are such a stupid person, I hate you!"
     result = predictor.predict(text)
     print(f"Text: {text}")
