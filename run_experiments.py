@@ -18,7 +18,7 @@ from src.config import (
 )
 from src.data_loader import load_vidgen_dataset, load_davidson_dataset, load_combined_dataset
 from src.text_preprocessing import clean_text, vectorize_tfidf, clean_and_tokenize
-from src.model_training import train_logistic_regression, save_model # save_model is for joblib models
+from src.model_training import train_logistic_regression, save_model, save_vectorizer, save_vocabulary # Added functions for saving components
 from src.evaluation_metrics import print_classification_metrics, plot_confusion_matrix, plot_training_history
 from src.bert_model import CyberbullyingDataset, get_bert_tokenizer, get_bert_model, create_bert_trainer, compute_bert_metrics
 from src.bilstm_model import SimpleVocab, load_glove, TextDataset, bilstm_collate_fn, BiLSTMClassifier, train_bilstm_model, eval_bilstm_model, get_bilstm_predictions
@@ -42,7 +42,7 @@ def run_baseline_model():
     # Vidgen Dataset
     vidgen_df = load_vidgen_dataset()
     vidgen_df['clean_text'] = vidgen_df['text'].apply(clean_text)
-    X_vidgen, _ = vectorize_tfidf(vidgen_df['clean_text'], max_features=TFIDF_MAX_FEATURES)
+    X_vidgen, tfidf_vidgen = vectorize_tfidf(vidgen_df['clean_text'], max_features=TFIDF_MAX_FEATURES)
     y_vidgen = vidgen_df['label'].values
 
     print("\n--- Training Logistic Regression on Vidgen Dataset ---")
@@ -51,13 +51,15 @@ def run_baseline_model():
     print_classification_metrics(y_test_vidgen, y_pred_vidgen, "Vidgen Dataset (Logistic Regression)")
     plot_confusion_matrix(y_test_vidgen, y_pred_vidgen, "Confusion Matrix - Vidgen LR",
                           save_path="./results/baseline_vidgen_cm.png")
-    save_model(lr_model_vidgen, LOGISTIC_REGRESSION_MODEL_PATH.replace(".pkl", "_vidgen.pkl")) # Save Vidgen LR model
+    # Save model and vectorizer
+    save_model(lr_model_vidgen, LOGISTIC_REGRESSION_MODEL_PATH.replace(".pkl", "_vidgen.pkl"))
+    save_vectorizer(tfidf_vidgen, LOGISTIC_REGRESSION_MODEL_PATH.replace(".pkl", "_tfidf_vidgen.pkl"))
 
 
     # Davidson Dataset
     davidson_df = load_davidson_dataset()
     davidson_df['clean_text'] = davidson_df['text'].apply(clean_text)
-    X_davidson, _ = vectorize_tfidf(davidson_df['clean_text'], max_features=TFIDF_MAX_FEATURES)
+    X_davidson, tfidf_davidson = vectorize_tfidf(davidson_df['clean_text'], max_features=TFIDF_MAX_FEATURES)
     y_davidson = davidson_df['label'].values
 
     print("\n--- Training Logistic Regression on Davidson Dataset ---")
@@ -66,12 +68,14 @@ def run_baseline_model():
     print_classification_metrics(y_test_davidson, y_pred_davidson, "Davidson Dataset (Logistic Regression)")
     plot_confusion_matrix(y_test_davidson, y_pred_davidson, "Confusion Matrix - Davidson LR",
                           save_path="./results/baseline_davidson_cm.png")
-    save_model(lr_model_davidson, LOGISTIC_REGRESSION_MODEL_PATH.replace(".pkl", "_davidson.pkl")) # Save Davidson LR model
+    # Save model and vectorizer
+    save_model(lr_model_davidson, LOGISTIC_REGRESSION_MODEL_PATH.replace(".pkl", "_davidson.pkl"))
+    save_vectorizer(tfidf_davidson, LOGISTIC_REGRESSION_MODEL_PATH.replace(".pkl", "_tfidf_davidson.pkl"))
 
     # Combined Dataset
     combined_df = load_combined_dataset()
     combined_df['clean_text'] = combined_df['text'].apply(clean_text)
-    X_combined, _ = vectorize_tfidf(combined_df['clean_text'], max_features=TFIDF_MAX_FEATURES)
+    X_combined, tfidf_combined = vectorize_tfidf(combined_df['clean_text'], max_features=TFIDF_MAX_FEATURES)
     y_combined = combined_df['label'].values
 
     print("\n--- Training Logistic Regression on Combined Dataset ---")
@@ -80,7 +84,9 @@ def run_baseline_model():
     print_classification_metrics(y_test_combined, y_pred_combined, "Combined Dataset (Logistic Regression)")
     plot_confusion_matrix(y_test_combined, y_pred_combined, "Confusion Matrix - Combined LR",
                           save_path="./results/baseline_combined_cm.png")
-    save_model(lr_model_combined, LOGISTIC_REGRESSION_MODEL_PATH.replace(".pkl", "_combined.pkl")) # Save Combined LR model
+    # Save model and vectorizer
+    save_model(lr_model_combined, LOGISTIC_REGRESSION_MODEL_PATH.replace(".pkl", "_combined.pkl"))
+    save_vectorizer(tfidf_combined, LOGISTIC_REGRESSION_MODEL_PATH.replace(".pkl", "_tfidf_combined.pkl"))
 
 
 def run_bert_model_experiment():
@@ -198,9 +204,13 @@ def run_bilstm_model_experiment():
     plot_confusion_matrix(y_true_bilstm, y_pred_bilstm, "BiLSTM Confusion Matrix",
                           save_path="./results/bilstm_confusion_matrix.png")
 
-    # Save the BiLSTM model
+    # Save the BiLSTM model and vocabulary
     torch.save(model.state_dict(), BILSTM_MODEL_OUTPUT_DIR + "/bilstm_model.pth")
     print(f"BiLSTM model saved to {BILSTM_MODEL_OUTPUT_DIR}/bilstm_model.pth")
+    
+    # Save the vocabulary for tokenizing new data during inference
+    save_vocabulary(vocab, BILSTM_MODEL_OUTPUT_DIR + "/bilstm_vocab.pkl")
+    print(f"BiLSTM vocabulary saved to {BILSTM_MODEL_OUTPUT_DIR}/bilstm_vocab.pkl")
 
 
 def run_emotion_fusion_model_experiment():
