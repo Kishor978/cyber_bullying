@@ -208,7 +208,7 @@ def run_emotion_fusion_model_experiment():
     print("                Running Emotion Fusion Model Experiment               ")
     print("="*80 + "\n")
 
-    df = load_vidgen_dataset()
+    df = load_combined_dataset()
     train_texts, val_texts, train_labels, val_labels = train_test_split(
         df['text'].tolist(), df['label'].tolist(), test_size=0.2, stratify=df['label']
 )
