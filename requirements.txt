@@ -98,6 +98,10 @@ threadpoolctl==3.6.0
 tokenizers==0.21.2
 # torch==2.6.0+cpu
 # torchaudio==2.6.0+cpu
+
+# Grafana monitoring dependencies
+influxdb-client==1.37.0
+psutil==7.0.0
 # torchvision==0.21.0+cpu
 tornado==6.5.1
 # tqdm==4.67.1

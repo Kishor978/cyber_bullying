@@ -1,18 +1,13 @@
 import os
 import sys
-# Add project root to path so we can import modules - MUST BE BEFORE OTHER IMPORTS
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 import streamlit as st
 import pandas as pd
-import numpy as np
-import time
 import matplotlib.pyplot as plt
 import seaborn as sns
-from model_predictor import ModelPredictor
-from healthcheck import start_healthcheck_server
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# Start health check server for Docker deployment
+from model_predictor import ModelPredictor
+
 
 # App title and description
 st.set_page_config(

@@ -1,0 +1,13 @@
+apiVersion: 1 
+datasources: 
+  - name: InfluxDB 
+    type: influxdb 
+    access: proxy 
+    url: http://influxdb:8086 
+    jsonData: 
+      version: Flux 
+      organization: cyberbullying_detection 
+      defaultBucket: model_metrics 
+      tlsSkipVerify: true 
+    secureJsonData: 
+      token: NvxsIGJXJiclcw5PiC2mR6DLuKusKv01kJBYrcHisMabsYQN1PByEg3614DVCbABn5FrOZ1VbURmYr7BLY1Wdg==
